@@ -604,7 +604,7 @@ void SpikePlot::clear()
         pAxes[i]->clear();
 }
 
-float SpikePlot::getDisplayThresholdForChannel(int i)
+Threshold SpikePlot::getDisplayThresholdForChannel(int i)
 {
     return wAxes[i]->getDisplayThreshold();
 }
@@ -619,17 +619,12 @@ void SpikePlot::setDetectorThresholdForChannel(int i, float t)
 // --------------------------------------------------
 
 
-WaveAxes::WaveAxes(int channel) : GenericAxes(channel),
-    drawGrid(true), 
-    displayThresholdLevel(0.0f),  
-    detectorThresholdLevel(0.0f),
-    spikesReceivedSinceLastRedraw(0),
-    spikeIndex(0),
-    bufferSize(5),
-    range(250.0f),
-    isOverThresholdSlider(false),
-    isDraggingThresholdSlider(false)
-    
+WaveAxes::WaveAxes(int channel) : GenericAxes(channel), drawGrid(true),
+    bufferSize(5), spikeIndex(0), displayThresholdLevel(0.5f, 50.0f, 0.9f, 10.0f), 
+    detectorThresholdLevel(0.0f), range(250.0f),
+    isOverThresholdSliderTopLeft(false), isOverThresholdSliderBottomRight(false), 
+    isDraggingThresholdSliderTopLeft(false), isDraggingThresholdSliderBottomRight(false),
+    spikesReceivedSinceLastRedraw(0)
 {
 
     addMouseListener(this, true);
@@ -662,7 +657,7 @@ void WaveAxes::paint(Graphics& g)
     g.setColour(Colours::black);
     g.fillRect(0,0,getWidth(), getHeight());
 
-   // int chan = 0;
+    int chan = 0;
 
     // draw the grid lines for the waveforms
 
@@ -742,14 +737,23 @@ void WaveAxes::drawThresholdSlider(Graphics& g)
 {
 
     // draw display threshold (editable)
-    float h = getHeight()*(0.5f - displayThresholdLevel/range);
+    float tlW = getWidth() * displayThresholdLevel.topLeftXLevel;
+    float brW = getWidth() * displayThresholdLevel.bottomRightXLevel;
+    float tlH = getHeight()*(0.5f - displayThresholdLevel.topLeftYLevel/range);
+    float brH = getHeight()*(0.5f - displayThresholdLevel.bottomRightYLevel/range);
 
     g.setColour(thresholdColour);
-    g.drawLine(0, h, getWidth(), h);
-    g.drawText(String(roundFloatToInt(displayThresholdLevel)),2,h,25,10,Justification::left, false);
+    g.drawLine(tlW, tlH, brW, tlH);
+    g.drawLine(tlW, tlH, tlW, brH);
+    g.drawLine(brW, tlH, brW, brH);
+    g.drawLine(tlW, brH, brW, brH);
+    g.drawText(String(roundFloatToInt(displayThresholdLevel.topLeftXLevel * spikeBuffer[0].nSamples)) + ", " +
+            String(roundFloatToInt(displayThresholdLevel.topLeftYLevel)),2,tlH,50,10,Justification::left, false);
+    g.drawText(String(roundFloatToInt(displayThresholdLevel.bottomRightXLevel * spikeBuffer[0].nSamples)) + ", " +
+            String(roundFloatToInt(displayThresholdLevel.bottomRightYLevel)),getWidth() - 52,brH,getWidth() - 2,10,Justification::left, false);
 
     // draw detector threshold (not editable)
-    h = getHeight()*(0.5f - detectorThresholdLevel/range);
+    float h = getHeight()*(0.5f - detectorThresholdLevel/range);
     
     g.setColour(Colours::orange);
     g.drawLine(0, h, getWidth(), h);
@@ -804,8 +808,10 @@ bool WaveAxes::checkThreshold(const SpikeObject& s)
 
     for (int i = 0; i < s.nSamples-1; i++)
     {
-
-        if (float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f > displayThresholdLevel)
+        float x = float(i) / float(s.nSamples);
+        float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
+        if (x >= displayThresholdLevel.topLeftXLevel && x <= displayThresholdLevel.bottomRightXLevel &&
+            y >= displayThresholdLevel.bottomRightYLevel && y <= displayThresholdLevel.topLeftYLevel)
         {
             return true;
         }
@@ -839,13 +845,18 @@ void WaveAxes::mouseMove(const MouseEvent& event)
 
     // Point<int> pos = event.getPosition();
 
+    float x = event.x;
     float y = event.y;
 
-    float h = getHeight()*(0.5f - displayThresholdLevel/range);
+    float tlW = getWidth() * displayThresholdLevel.topLeftXLevel;
+    float brW = getWidth() * displayThresholdLevel.bottomRightXLevel;
+    float tlH = getHeight()*(0.5f - displayThresholdLevel.topLeftYLevel/range);
+    float brH = getHeight()*(0.5f - displayThresholdLevel.bottomRightYLevel/range);
 
     // std::cout << y << " " << h << std::endl;
 
-    if (y > h - 10.0f && y < h + 10.0f && !isOverThresholdSlider)
+    if (std::fabs(x - tlW) < 5.0f &&
+            y > tlH - 5.0f && y < tlH + 5.0f && !isOverThresholdSliderTopLeft)
     {
         thresholdColour = Colours::yellow;
 
@@ -853,18 +864,47 @@ void WaveAxes::mouseMove(const MouseEvent& event)
 
         repaint();
 
-        isOverThresholdSlider = true;
+        isOverThresholdSliderTopLeft = true;
+        isOverThresholdSliderBottomRight = false;
 
         // cursorType = MouseCursor::DraggingHandCursor;
 
     }
-    else if ((y < h - 10.0f || y > h + 10.0f) && isOverThresholdSlider)
+    else if (std::fabs(x - brW) < 5.0f &&
+            y > brH - 5.0f && y < brH + 5.0f && !isOverThresholdSliderBottomRight)
+    {
+        thresholdColour = Colours::blue;
+
+        //  std::cout << "Yes." << std::endl;
+
+        repaint();
+
+        isOverThresholdSliderTopLeft = false;
+        isOverThresholdSliderBottomRight = true;
+
+        // cursorType = MouseCursor::DraggingHandCursor;
+
+    }
+    else if (std::fabs(x - tlW) < 5.0f && 
+            (y < tlH - 5.0f || y > tlH + 5.0f) && isOverThresholdSliderTopLeft)
     {
 
         thresholdColour = Colours::red;
         repaint();
 
-        isOverThresholdSlider = false;
+        isOverThresholdSliderTopLeft = false;
+
+        //   cursorType = MouseCursor::NormalCursor;
+
+    }
+    else if (std::fabs(x - brW) < 5.0f && 
+            (y < brH - 5.0f || y > brH + 5.0f) && isOverThresholdSliderBottomRight)
+    {
+
+        thresholdColour = Colours::red;
+        repaint();
+
+        isOverThresholdSliderBottomRight = false;
 
         //   cursorType = MouseCursor::NormalCursor;
 
@@ -883,23 +923,35 @@ void WaveAxes::mouseDown(const MouseEvent& event)
 
 void WaveAxes::mouseDrag(const MouseEvent& event)
 {
-    if (isOverThresholdSlider)
+    float thresholdSliderPositionX = float(event.x) / float(getWidth());
+    float thresholdSliderPositionY = float(event.y) / float(getHeight());
+
+    if (thresholdSliderPositionX >= 1.0f)
+        thresholdSliderPositionX = float(getWidth() - 1) / float(getWidth());
+    else if (thresholdSliderPositionX < 0.0f)
+        thresholdSliderPositionX = 0.0f;
+
+    if (thresholdSliderPositionY > 0.5f)
+        thresholdSliderPositionY = 0.5f;
+    else if (thresholdSliderPositionY < 0.0f)
+        thresholdSliderPositionY = 0.0f;
+
+    if (isOverThresholdSliderTopLeft)
     {
-
-        float thresholdSliderPosition =  float(event.y) / float(getHeight());
-
-        if (thresholdSliderPosition > 0.5f)
-            thresholdSliderPosition = 0.5f;
-        else if (thresholdSliderPosition < 0.0f)
-            thresholdSliderPosition = 0.0f;
-
-
-        displayThresholdLevel = (0.5f - thresholdSliderPosition) * range;
-
-        //std::cout << "Threshold = " << thresholdLevel << std::endl;
-
-        repaint();
+        if ((thresholdSliderPositionX - displayThresholdLevel.bottomRightXLevel) * float(getWidth()) <= -10.0f)
+            displayThresholdLevel.topLeftXLevel = thresholdSliderPositionX;
+        if (getHeight()*(0.5f - displayThresholdLevel.bottomRightYLevel/range) - event.y >= 10.0f)
+            displayThresholdLevel.topLeftYLevel = (0.5f - thresholdSliderPositionY) * range;
     }
+    else if (isOverThresholdSliderBottomRight)
+    {
+        if ((displayThresholdLevel.topLeftXLevel - thresholdSliderPositionX) * float(getWidth()) <= -10.0f)
+            displayThresholdLevel.bottomRightXLevel = thresholdSliderPositionX;
+        if (event.y - getHeight()*(0.5f - displayThresholdLevel.topLeftYLevel/range) >= 10.0f)
+            displayThresholdLevel.bottomRightYLevel = (0.5f - thresholdSliderPositionY) * range;
+    }
+
+    repaint();
 }
 
 // MouseCursor WaveAxes::getMouseCursor()
@@ -911,15 +963,21 @@ void WaveAxes::mouseDrag(const MouseEvent& event)
 
 void WaveAxes::mouseExit(const MouseEvent& event)
 {
-    if (isOverThresholdSlider)
+    if (isOverThresholdSliderTopLeft)
     {
-        isOverThresholdSlider = false;
+        isOverThresholdSliderTopLeft = false;
+        thresholdColour = Colours::red;
+        repaint();
+    }
+    else if (isOverThresholdSliderBottomRight)
+    {
+        isOverThresholdSliderBottomRight = false;
         thresholdColour = Colours::red;
         repaint();
     }
 }
 
-float WaveAxes::getDisplayThreshold()
+Threshold WaveAxes::getDisplayThreshold()
 {
     return displayThresholdLevel;
 }

@@ -30,6 +30,7 @@
 #include "SpikeObject.h"
 
 #include "Visualizer.h"
+#include <cmath>
 #include <vector>
 
 #define WAVE1 0
@@ -55,6 +56,7 @@ class SpikeDisplayNode;
 class SpikeDisplay;
 class GenericAxes;
 class ProjectionAxes;
+struct Threshold;
 class WaveAxes;
 class SpikePlot;
 class RecordNode;
@@ -200,7 +202,7 @@ public:
 
     void buttonClicked(Button* button);
 
-    float getDisplayThresholdForChannel(int);
+    Threshold getDisplayThresholdForChannel(int);
     void setDetectorThresholdForChannel(int, float);
 
 private:
@@ -279,6 +281,23 @@ protected:
 
 
 /**
+ * Struct which contains rectangular threshold parameters
+ */
+struct Threshold
+{
+    float topLeftXLevel, topLeftYLevel;
+    float bottomRightXLevel, bottomRightYLevel;
+    Threshold() {}
+    Threshold(float tlX, float tlY, float brX, float brY)
+    {
+        topLeftXLevel = tlX;
+        topLeftYLevel = tlY;
+        bottomRightXLevel = brX;
+        bottomRightYLevel = brY;
+    }
+};
+
+/**
 
   Class for drawing spike waveforms.
 
@@ -310,20 +329,19 @@ public:
         return range;
     }
 
-    float getDisplayThreshold();
+    Threshold getDisplayThreshold();
     void setDetectorThreshold(float);
 
     //MouseCursor getMouseCursor();
 
 private:
-
     Colour waveColour;
     Colour thresholdColour;
     Colour gridColour;
 
     bool drawGrid;
 
-    float displayThresholdLevel;
+    Threshold displayThresholdLevel;
     float detectorThresholdLevel;
 
     void drawWaveformGrid(Graphics& g);
@@ -341,8 +359,10 @@ private:
 
     float range;
 
-    bool isOverThresholdSlider;
-    bool isDraggingThresholdSlider;
+    bool isOverThresholdSliderTopLeft;
+    bool isOverThresholdSliderBottomRight;
+    bool isDraggingThresholdSliderTopLeft;
+    bool isDraggingThresholdSliderBottomRight;
 
     MouseCursor::StandardCursorType cursorType;
 

@@ -30,7 +30,7 @@
 
 
 SpikeDisplayNode::SpikeDisplayNode()
-    : GenericProcessor("Spike Viewer"), displayBufferSize(5),  redrawRequested(false), isRecording(false),
+    : GenericProcessor("Spike Viewer"), displayBufferSize(5), isRecording(false), redrawRequested(false),
 	  signalFilesShouldClose(false)
 {
  
@@ -72,7 +72,7 @@ void SpikeDisplayNode::updateSettings()
 
             for (int j = 0; j < elec.numChannels; j++)
             {
-                elec.displayThresholds.add(0);
+                elec.displayThresholds.add(Threshold());
                 elec.detectorThresholds.add(0);
             }
             
@@ -307,14 +307,16 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
 
 }
 
-bool SpikeDisplayNode::checkThreshold(int chan, float thresh, SpikeObject& s)
+bool SpikeDisplayNode::checkThreshold(int chan, Threshold thresh, SpikeObject& s)
 {
     int sampIdx = s.nSamples*chan;
 
     for (int i = 0; i < s.nSamples-1; i++)
     {
-
-        if (float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f > thresh)
+        float x = float(i) / float(s.nSamples);
+        float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
+        if (x >= thresh.topLeftXLevel && x <= thresh.bottomRightXLevel &&
+            y >= thresh.bottomRightYLevel && y <= thresh.topLeftYLevel)
         {
             return true;
         }

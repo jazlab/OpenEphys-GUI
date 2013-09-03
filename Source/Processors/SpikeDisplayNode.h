@@ -32,6 +32,7 @@
 
 class DataViewport;
 class SpikePlot;
+struct Threshold;
 
 /**
 
@@ -77,7 +78,7 @@ public:
     void addSpikePlotForElectrode(SpikePlot* sp, int i);
     void removeSpikePlots();
 
-    bool checkThreshold(int, float, SpikeObject&);
+    bool checkThreshold(int, Threshold, SpikeObject&);
 
 private:
 
@@ -87,7 +88,7 @@ private:
 
         int numChannels;
 
-        Array<float> displayThresholds;
+        Array<Threshold> displayThresholds;
         Array<float> detectorThresholds;
 
         Array<SpikeObject> mostRecentSpikes;
