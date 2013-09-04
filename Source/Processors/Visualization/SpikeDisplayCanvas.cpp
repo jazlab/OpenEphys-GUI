@@ -420,7 +420,8 @@ void SpikePlot::processSpikeObject(const SpikeObject& s)
     // if (aboveThreshold)
     // {
         for (int i = 0; i < nWaveAx; i++)
-            wAxes[i]->updateSpikeData(s);
+			if (wAxes[i]->checkThreshold(s))
+				wAxes[i]->updateSpikeData(s);
 
         for (int i = 0; i < nProjAx; i++)
             pAxes[i]->updateSpikeData(s);
