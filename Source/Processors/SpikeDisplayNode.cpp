@@ -271,14 +271,14 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
                 Electrode& e = electrodes.getReference(electrodeNum);
                // std::cout << electrodeNum << std::endl;
 
-                 bool aboveThreshold = false;
+                 bool aboveThreshold = true;
 
                 // update threshold / check threshold
                 for (int i = 0; i < e.numChannels; i++)
                 {
                     e.detectorThresholds.set(i, float(newSpike.threshold[i])); // / float(newSpike.gain[i]));
 
-                    aboveThreshold = aboveThreshold | checkThreshold(i, e.displayThresholds[i], newSpike);   
+                    aboveThreshold = aboveThreshold & checkThreshold(i, e.displayThresholds[i], newSpike);   
                 }
 
                 if (aboveThreshold)
