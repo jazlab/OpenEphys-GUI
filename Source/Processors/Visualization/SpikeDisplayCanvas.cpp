@@ -932,8 +932,8 @@ void WaveAxes::mouseDrag(const MouseEvent& event)
     else if (thresholdSliderPositionX < 0.0f)
         thresholdSliderPositionX = 0.0f;
 
-    if (thresholdSliderPositionY > 0.5f)
-        thresholdSliderPositionY = 0.5f;
+    if (thresholdSliderPositionY > 1.0f)
+        thresholdSliderPositionY = 1.0f;
     else if (thresholdSliderPositionY < 0.0f)
         thresholdSliderPositionY = 0.0f;
 
