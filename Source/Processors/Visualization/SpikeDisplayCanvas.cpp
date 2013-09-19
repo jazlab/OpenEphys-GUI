@@ -623,8 +623,7 @@ void SpikePlot::setDetectorThresholdForChannel(int i, float t)
 WaveAxes::WaveAxes(int channel) : GenericAxes(channel), drawGrid(true),
     bufferSize(5), spikeIndex(0), displayThresholdLevel(0.5f, 50.0f, 0.9f, 10.0f), 
     detectorThresholdLevel(0.0f), range(250.0f),
-    isOverThresholdSliderTopLeft(false), isOverThresholdSliderBottomRight(false), 
-    isDraggingThresholdSliderTopLeft(false), isDraggingThresholdSliderBottomRight(false),
+    isOverThresholdSliderTopLeft(false), isOverThresholdSliderBottomRight(false), isOverThresholdSliderMid(false), 
     spikesReceivedSinceLastRedraw(0)
 {
 
@@ -856,8 +855,8 @@ void WaveAxes::mouseMove(const MouseEvent& event)
 
     // std::cout << y << " " << h << std::endl;
 
-    if (std::fabs(x - tlW) < 5.0f &&
-            y > tlH - 5.0f && y < tlH + 5.0f && !isOverThresholdSliderTopLeft)
+    if (std::fabs(x - tlW) < 1000.0f &&
+            y > tlH - 1000.0f && y < tlH && !isOverThresholdSliderTopLeft)
     {
         thresholdColour = Colours::yellow;
 
@@ -886,8 +885,23 @@ void WaveAxes::mouseMove(const MouseEvent& event)
         // cursorType = MouseCursor::DraggingHandCursor;
 
     }
-    else if (std::fabs(x - tlW) < 5.0f && 
-            (y < tlH - 5.0f || y > tlH + 5.0f) && isOverThresholdSliderTopLeft)
+    else if (std::fabs(x - (tlW + brW) / 2.0) < 5.0f &&
+            y > (tlH + brH / 2.0) - 5.0f && y < (tlH + brH / 2.0) + 5.0f && !isOverThresholdSliderMid) // switch to dragging the entire window
+    {
+        thresholdColour = Colours::green;
+
+        //  std::cout << "Yes." << std::endl;
+
+        repaint();
+
+        isOverThresholdSliderTopLeft = false;
+        isOverThresholdSliderBottomRight = false;
+		isOverThresholdSliderMid = true;
+
+        // cursorType = MouseCursor::DraggingHandCursor;
+
+    }
+    else if ((std::fabs(x - tlW) > 5.0f || y < tlH - 5.0f || y > tlH + 5.0f) && isOverThresholdSliderTopLeft)
     {
 
         thresholdColour = Colours::red;
@@ -898,8 +912,7 @@ void WaveAxes::mouseMove(const MouseEvent& event)
         //   cursorType = MouseCursor::NormalCursor;
 
     }
-    else if (std::fabs(x - brW) < 5.0f && 
-            (y < brH - 5.0f || y > brH + 5.0f) && isOverThresholdSliderBottomRight)
+    else if ((std::fabs(x - brW) > 5.0f || y < brH - 5.0f || y > brH + 5.0f) && isOverThresholdSliderBottomRight)
     {
 
         thresholdColour = Colours::red;
@@ -910,8 +923,17 @@ void WaveAxes::mouseMove(const MouseEvent& event)
         //   cursorType = MouseCursor::NormalCursor;
 
     }
+    else if ((std::fabs(x - (tlW + brW) / 2.0) > 5.0f || y < (tlH + brH / 2.0) - 5.0f || y > (tlH + brH / 2.0) + 5.0f) && isOverThresholdSliderMid)
+    {
 
+        thresholdColour = Colours::red;
+        repaint();
 
+        isOverThresholdSliderMid = false;
+
+        //	cursorType = MouseCursor::NormalCursor;
+
+    }
 }
 
 void WaveAxes::mouseDown(const MouseEvent& event)
@@ -973,6 +995,12 @@ void WaveAxes::mouseExit(const MouseEvent& event)
     else if (isOverThresholdSliderBottomRight)
     {
         isOverThresholdSliderBottomRight = false;
+        thresholdColour = Colours::red;
+        repaint();
+    }
+    else if (isOverThresholdSliderMid)
+    {
+        isOverThresholdSliderMid = false;
         thresholdColour = Colours::red;
         repaint();
     }

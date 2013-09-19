@@ -30,7 +30,6 @@
 #include "SpikeObject.h"
 
 #include "Visualizer.h"
-#include <cmath>
 #include <vector>
 
 #define WAVE1 0
@@ -361,8 +360,7 @@ private:
 
     bool isOverThresholdSliderTopLeft;
     bool isOverThresholdSliderBottomRight;
-    bool isDraggingThresholdSliderTopLeft;
-    bool isDraggingThresholdSliderBottomRight;
+	bool isOverThresholdSliderMid;
 
     MouseCursor::StandardCursorType cursorType;
 
