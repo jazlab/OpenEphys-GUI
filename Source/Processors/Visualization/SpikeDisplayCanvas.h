@@ -341,6 +341,7 @@ private:
     bool drawGrid;
 
     Threshold displayThresholdLevel;
+	Threshold displayThresholdLevelAtStartOfDrag;
     float detectorThresholdLevel;
 
     void drawWaveformGrid(Graphics& g);
@@ -361,6 +362,7 @@ private:
     bool isOverThresholdSliderTopLeft;
     bool isOverThresholdSliderBottomRight;
 	bool isOverThresholdSliderMid;
+	bool startDrag;
 
     MouseCursor::StandardCursorType cursorType;
 
