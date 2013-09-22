@@ -162,12 +162,10 @@ SpikeDisplay::SpikeDisplay(SpikeDisplayCanvas* sdc, Viewport* v) :
 {
 
     totalHeight = 1000;
-
 }
 
 SpikeDisplay::~SpikeDisplay()
 {
-
 }
 
 void SpikeDisplay::clear()
@@ -327,9 +325,13 @@ void SpikeDisplay::plotSpike(const SpikeObject& spike, int electrodeNum)
 
 SpikePlot::SpikePlot(SpikeDisplayCanvas* sdc, int elecNum, int p, String name_) :
     canvas(sdc), isSelected(false), electrodeNumber(elecNum),  plotType(p),
-    limitsChanged(true), name(name_)
+    limitsChanged(true), name(name_), 
+    resizeBorder(new ResizableBorderComponent(this, nullptr)), dragger(new ComponentDragger())
 
 {
+    addChildComponent(resizeBorder);
+    resizeBorder->setBounds(0,0,getWidth(),getHeight());
+    resizeBorder->setVisible(true);
 
     font = Font("Default", 15, Font::plain);
 
@@ -388,7 +390,8 @@ SpikePlot::SpikePlot(SpikeDisplayCanvas* sdc, int elecNum, int p, String name_) 
 
 SpikePlot::~SpikePlot()
 {
-
+    delete resizeBorder; // remember to clean up the resizing border
+    delete dragger;
 }
 
 void SpikePlot::paint(Graphics& g)
@@ -513,7 +516,7 @@ void SpikePlot::resized()
     for (int i = 0; i < nProjAx; i++)
         pAxes[i]->setBounds(5 + (1 + i%nProjCols) * axesWidth, 20 + (i/nProjCols) * axesHeight, axesWidth, axesHeight);
 
-
+    resizeBorder->setBounds(0, 0, getWidth(), getHeight()); // resize the resizing component to be the same size as this component
 }
 
 void SpikePlot::buttonClicked(Button* button)
@@ -616,6 +619,15 @@ void SpikePlot::setDetectorThresholdForChannel(int i, float t)
     wAxes[i]->setDetectorThreshold(t);
 }
 
+void SpikePlot::mouseDown(const MouseEvent& event) // to allow component dragging
+{
+    dragger->startDraggingComponent(this, event);
+}
+
+void SpikePlot::mouseDrag(const MouseEvent& event)
+{
+    dragger->dragComponent(this, event, nullptr);
+}
 
 // --------------------------------------------------
 

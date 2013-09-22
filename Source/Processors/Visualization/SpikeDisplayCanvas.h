@@ -204,6 +204,8 @@ public:
     Threshold getDisplayThresholdForChannel(int);
     void setDetectorThresholdForChannel(int, float);
 
+    void mouseDown(const MouseEvent& event); // to allow component dragging
+    void mouseDrag(const MouseEvent& event);
 private:
 
     int plotType;
@@ -227,7 +229,8 @@ private:
 
     Font font;
 
-    
+    ResizableBorderComponent* resizeBorder; // to allow resizing of this component
+    ComponentDragger* dragger; // to allow dragging of this component
 
 };
 
