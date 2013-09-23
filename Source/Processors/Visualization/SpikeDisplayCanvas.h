@@ -324,6 +324,7 @@ public:
     void mouseExit(const MouseEvent& event);
     void mouseDown(const MouseEvent& event);
     void mouseDrag(const MouseEvent& event);
+	void mouseUp(const MouseEvent& event);
 
     void setRange(float);
     float getRange()

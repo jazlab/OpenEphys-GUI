@@ -958,7 +958,7 @@ void WaveAxes::mouseDown(const MouseEvent& event)
     // {
     //     cursorType = MouseCursor::DraggingHandCursor;
     // }
-	if (!startDrag)
+	if (isOverThresholdSliderMid && !startDrag)
 	{
 		startDrag = true;
 		displayThresholdLevelAtStartOfDrag = displayThresholdLevel;
@@ -1047,6 +1047,12 @@ void WaveAxes::mouseExit(const MouseEvent& event)
         repaint();
     }
 
+	if (startDrag)
+		startDrag = false;
+}
+
+void WaveAxes::mouseUp(const MouseEvent& event)
+{
 	if (startDrag)
 		startDrag = false;
 }
