@@ -201,7 +201,7 @@ public:
 
     void buttonClicked(Button* button);
 
-    Threshold getDisplayThresholdForChannel(int);
+    Array<Threshold> getDisplayThresholdsForChannel(int);
     void setDetectorThresholdForChannel(int, float);
 
     void mouseDown(const MouseEvent& event); // to allow component dragging
@@ -219,6 +219,7 @@ private:
     OwnedArray<ProjectionAxes> pAxes;
     OwnedArray<WaveAxes> wAxes;
     OwnedArray<UtilityButton> rangeButtons;
+	OwnedArray<WindowButton> windowThresholdButtons;
     Array<float> ranges;
 
     void initLimits();
@@ -290,13 +291,12 @@ struct Threshold
     float topLeftXLevel, topLeftYLevel;
     float bottomRightXLevel, bottomRightYLevel;
     Threshold() {}
-    Threshold(float tlX, float tlY, float brX, float brY)
-    {
-        topLeftXLevel = tlX;
-        topLeftYLevel = tlY;
-        bottomRightXLevel = brX;
-        bottomRightYLevel = brY;
-    }
+    Threshold(float tlX, float tlY, float brX, float brY) :
+		topLeftXLevel(tlX),
+		topLeftYLevel(tlY),
+		bottomRightXLevel(brX),
+		bottomRightYLevel(brY)
+    {}
 };
 
 /**
@@ -332,20 +332,23 @@ public:
         return range;
     }
 
-    Threshold getDisplayThreshold();
+    Array<Threshold> getDisplayThresholds();
     void setDetectorThreshold(float);
+
+	void addWindowThreshold();
 
     //MouseCursor getMouseCursor();
 
 private:
     Colour waveColour;
-    Colour thresholdColour;
+    Array<Colour> thresholdColours;
     Colour gridColour;
 
     bool drawGrid;
 
-    Threshold displayThresholdLevel;
+    Array<Threshold> displayThresholdLevels;
 	Threshold displayThresholdLevelAtStartOfDrag;
+	int draggedIndex;
     float detectorThresholdLevel;
 
     void drawWaveformGrid(Graphics& g);
@@ -366,6 +369,7 @@ private:
     bool isOverThresholdSliderTopLeft;
     bool isOverThresholdSliderBottomRight;
 	bool isOverThresholdSliderMid;
+	int overIndex;
 	bool startDrag;
 
     MouseCursor::StandardCursorType cursorType;

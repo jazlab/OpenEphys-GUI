@@ -72,7 +72,8 @@ void SpikeDisplayNode::updateSettings()
 
             for (int j = 0; j < elec.numChannels; j++)
             {
-                elec.displayThresholds.add(Threshold());
+                elec.displayThresholds.add(Array<Threshold>());
+				elec.displayThresholds.getReference(elec.displayThresholds.size() - 1).add(Threshold());
                 elec.detectorThresholds.add(0);
             }
             
@@ -226,7 +227,7 @@ void SpikeDisplayNode::process(AudioSampleBuffer& buffer, MidiBuffer& events, in
             for (int j = 0; j < e.numChannels; j++)
             {
                 e.displayThresholds.set(j, 
-                    e.spikePlot->getDisplayThresholdForChannel(j));
+                    e.spikePlot->getDisplayThresholdsForChannel(j));
 
                 e.spikePlot->setDetectorThresholdForChannel(j, e.detectorThresholds[j]);
             }
@@ -278,7 +279,7 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
                 {
                     e.detectorThresholds.set(i, float(newSpike.threshold[i])); // / float(newSpike.gain[i]));
 
-                    aboveThreshold = aboveThreshold & checkThreshold(i, e.displayThresholds[i], newSpike);   
+                    aboveThreshold = aboveThreshold & checkThresholds(i, e.displayThresholds[i], newSpike);   
                 }
 
                 if (aboveThreshold)
@@ -307,24 +308,34 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
 
 }
 
-bool SpikeDisplayNode::checkThreshold(int chan, Threshold thresh, SpikeObject& s)
+bool SpikeDisplayNode::checkThresholds(int chan, Array<Threshold>& thresh, SpikeObject& s)
 {
     int sampIdx = s.nSamples*chan;
 
-    for (int i = 0; i < s.nSamples-1; i++)
-    {
-        float x = float(i) / float(s.nSamples);
-        float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
-        if (x >= thresh.topLeftXLevel && x <= thresh.bottomRightXLevel &&
-            y >= thresh.bottomRightYLevel && y <= thresh.topLeftYLevel)
-        {
-            return true;
-        }
+	for (Threshold* it = thresh.begin(); it != thresh.end(); ++it)
+	{
+		bool intersected = false;
+		// Make sure all thresholds are intersected
+		for (int i = 0; i < s.nSamples-1; i++)
+		{
+			float x = float(i) / float(s.nSamples);
+			float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
+			if (x >= it->topLeftXLevel && x <= it->bottomRightXLevel &&
+				y >= it->bottomRightYLevel && y <= it->topLeftYLevel)
+			{
+				intersected = true;
+			}
 
-        sampIdx++;
-    }
+			sampIdx++;
+		}
 
-    return false;
+		if (!intersected)
+		{
+			return false;
+		}
+	}
+
+    return true; // all thresholds were intersected
 }
 
 void SpikeDisplayNode::openFile(int i)

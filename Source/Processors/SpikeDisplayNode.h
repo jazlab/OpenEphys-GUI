@@ -78,7 +78,7 @@ public:
     void addSpikePlotForElectrode(SpikePlot* sp, int i);
     void removeSpikePlots();
 
-    bool checkThreshold(int, Threshold, SpikeObject&);
+    bool checkThresholds(int, Array<Threshold>&, SpikeObject&);
 
 private:
 
@@ -88,7 +88,7 @@ private:
 
         int numChannels;
 
-        Array<Threshold> displayThresholds;
+        Array<Array<Threshold> > displayThresholds;
         Array<float> detectorThresholds;
 
         Array<SpikeObject> mostRecentSpikes;

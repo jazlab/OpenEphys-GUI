@@ -335,6 +335,29 @@ private:
 
 /**
 
+  A button that displays a window shape.
+
+  Useful for adding a new threshold window (as in SpikeDetectorEditor).
+
+  @see GenericEditor
+
+*/
+
+class WindowButton : public Button
+{
+public:
+    WindowButton();
+    ~WindowButton() {}
+private:
+    void paintButton(Graphics& g, bool isMouseOver, bool isButtonDown);
+    ColourGradient selectedGrad, selectedOverGrad, neutralGrad, neutralOverGrad;
+    Path outlinePath;
+
+    void resized();
+};
+
+/**
+
   A button that displays text.
 
   @see GenericEditor

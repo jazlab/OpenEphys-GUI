@@ -811,6 +811,48 @@ void TriangleButton::paintButton(Graphics& g, bool isMouseOver, bool isButtonDow
 
 }
 
+WindowButton::WindowButton() : 
+	Button("Add new window threshold"),
+	selectedGrad(Colour(240,179,12),0.0,0.0,Colour(207,160,33),0.0, 20.0f,false),
+	selectedOverGrad(Colour(209,162,33),0.0, 5.0f,Colour(190,150,25),0.0, 0.0f, false),
+	neutralGrad(Colour(220,220,220),0.0,0.0, Colour(170,170,170),0.0, 20.0f, false),
+	neutralOverGrad(Colour(180,180,180),0.0,5.0f, Colour(150,150,150),0.0, 0.0, false)
+{
+}
+
+void WindowButton::paintButton(Graphics& g, bool isMouseOver, bool isButtonDown)
+{
+    g.setColour(Colours::grey);
+    g.fillPath(outlinePath);
+
+    if (isMouseOver)
+        g.setGradientFill(neutralOverGrad);
+    else
+        g.setGradientFill(neutralGrad);
+
+    AffineTransform a = AffineTransform::scale(0.98f, 0.94f, float(getWidth())/2.0f,
+                                               float(getHeight())/2.0f);
+    g.fillPath(outlinePath, a);
+
+	
+    g.setColour(Colours::black);
+	g.drawHorizontalLine(3, 3, getWidth()-3);
+	g.drawHorizontalLine(6, 3, getWidth()-3);
+	g.drawVerticalLine(3, 3, getHeight()-3);
+	g.drawVerticalLine(getWidth()-3, 3, getHeight()-2);
+	g.drawHorizontalLine(getHeight()-3, 3, getWidth()-3);
+}
+
+void WindowButton::resized()
+{
+    outlinePath.clear();
+    outlinePath.startNewSubPath(0, 0);
+    outlinePath.lineTo(getWidth(), 0);
+    outlinePath.lineTo(getWidth(), getHeight());
+    outlinePath.lineTo(0, getHeight());
+    outlinePath.closeSubPath();
+}
+
 void GenericEditor::updateParameterButtons(int parameterIndex)
 {
 

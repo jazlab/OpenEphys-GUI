@@ -384,6 +384,12 @@ SpikePlot::SpikePlot(SpikeDisplayCanvas* sdc, int elecNum, int p, String name_) 
         addAndMakeVisible(rangeButton);
 
         rangeButtons.add(rangeButton);
+
+		WindowButton* addWindowThresholdButton = new WindowButton(); // this button allows us to add new window thresholds in each channel
+		addWindowThresholdButton->addListener(this);
+		addAndMakeVisible(addWindowThresholdButton);
+
+        windowThresholdButtons.add(addWindowThresholdButton);
     }
 
 }
@@ -511,6 +517,9 @@ void SpikePlot::resized()
         rangeButtons[i]->setBounds(8 + (i % nWaveCols) * axesWidth/nWaveCols,
                                    20 + (i/nWaveCols) * axesHeight + axesHeight - 18,
                                    25, 15);
+		windowThresholdButtons[i]->setBounds(38 + (i % nWaveCols) * axesWidth/nWaveCols,
+                                   20 + (i/nWaveCols) * axesHeight + axesHeight - 18,
+                                   15, 15);
     }
 
     for (int i = 0; i < nProjAx; i++)
@@ -521,30 +530,38 @@ void SpikePlot::resized()
 
 void SpikePlot::buttonClicked(Button* button)
 {
-    UtilityButton* buttonThatWasClicked = (UtilityButton*) button;
+    UtilityButton* buttonThatWasClicked = dynamic_cast<UtilityButton*>(button);
 
-    int index = rangeButtons.indexOf(buttonThatWasClicked);
-    String label;
+	if (buttonThatWasClicked == NULL)
+	{
+		WindowButton* buttonThatWasClicked = static_cast<WindowButton*>(button); // we know it MUST be a WindowButton
+		wAxes[windowThresholdButtons.indexOf(buttonThatWasClicked)]->addWindowThreshold();
+	}
+	else
+	{
+		int index = rangeButtons.indexOf(buttonThatWasClicked);
+		String label;
 
-    if (ranges[index] == 250.0f)
-    {
-        ranges.set(index, 500.0f);
-        label = "500";
-    }
-    else if (ranges[index] == 500.0f)
-    {
-        ranges.set(index, 100.0f);
-        label = "100";
-    }
-    else if (ranges[index] == 100.0f)
-    {
-        ranges.set(index, 250.0f);
-        label = "250";
-    }
+		if (ranges[index] == 250.0f)
+		{
+			ranges.set(index, 500.0f);
+			label = "500";
+		}
+		else if (ranges[index] == 500.0f)
+		{
+			ranges.set(index, 100.0f);
+			label = "100";
+		}
+		else if (ranges[index] == 100.0f)
+		{
+			ranges.set(index, 250.0f);
+			label = "250";
+		}
 
-    buttonThatWasClicked->setLabel(label);
+		buttonThatWasClicked->setLabel(label);
 
-    setLimitsOnAxes();
+		setLimitsOnAxes(); 
+	}
 
 }
 
@@ -608,9 +625,9 @@ void SpikePlot::clear()
         pAxes[i]->clear();
 }
 
-Threshold SpikePlot::getDisplayThresholdForChannel(int i)
+Array<Threshold> SpikePlot::getDisplayThresholdsForChannel(int i)
 {
-    return wAxes[i]->getDisplayThreshold();
+    return wAxes[i]->getDisplayThresholds();
 }
 
 void SpikePlot::setDetectorThresholdForChannel(int i, float t)
@@ -633,16 +650,17 @@ void SpikePlot::mouseDrag(const MouseEvent& event)
 
 
 WaveAxes::WaveAxes(int channel) : GenericAxes(channel), drawGrid(true),
-    bufferSize(5), spikeIndex(0), displayThresholdLevel(0.5f, 50.0f, 0.9f, 10.0f), 
+    bufferSize(5), spikeIndex(0),
     detectorThresholdLevel(0.0f), range(250.0f),
     isOverThresholdSliderTopLeft(false), isOverThresholdSliderBottomRight(false), isOverThresholdSliderMid(false), 
 	startDrag(false),
     spikesReceivedSinceLastRedraw(0)
 {
+	displayThresholdLevels.add(Threshold(0.5f, 50.0f, 0.9f, 10.0f));
 
     addMouseListener(this, true);
 
-    thresholdColour = Colours::red;
+    thresholdColours.add(Colours::red);
 
     font = Font("Small Text",10,Font::plain);
 
@@ -750,20 +768,23 @@ void WaveAxes::drawThresholdSlider(Graphics& g)
 {
 
     // draw display threshold (editable)
-    float tlW = getWidth() * displayThresholdLevel.topLeftXLevel;
-    float brW = getWidth() * displayThresholdLevel.bottomRightXLevel;
-    float tlH = getHeight()*(0.5f - displayThresholdLevel.topLeftYLevel/range);
-    float brH = getHeight()*(0.5f - displayThresholdLevel.bottomRightYLevel/range);
+	for (Threshold* it = displayThresholdLevels.begin(); it != displayThresholdLevels.end(); ++it)
+	{
+		float tlW = getWidth() * it->topLeftXLevel;
+		float brW = getWidth() * it->bottomRightXLevel;
+		float tlH = getHeight()*(0.5f - it->topLeftYLevel/range);
+		float brH = getHeight()*(0.5f - it->bottomRightYLevel/range);
 
-    g.setColour(thresholdColour);
-    g.drawLine(tlW, tlH, brW, tlH);
-    g.drawLine(tlW, tlH, tlW, brH);
-    g.drawLine(brW, tlH, brW, brH);
-    g.drawLine(tlW, brH, brW, brH);
-    g.drawText(String(roundFloatToInt(displayThresholdLevel.topLeftXLevel * spikeBuffer[0].nSamples)) + ", " +
-            String(roundFloatToInt(displayThresholdLevel.topLeftYLevel)),2,tlH,50,10,Justification::left, false);
-    g.drawText(String(roundFloatToInt(displayThresholdLevel.bottomRightXLevel * spikeBuffer[0].nSamples)) + ", " +
-            String(roundFloatToInt(displayThresholdLevel.bottomRightYLevel)),getWidth() - 52,brH,getWidth() - 2,10,Justification::left, false);
+		g.setColour(thresholdColours[it - displayThresholdLevels.begin()]);
+		g.drawLine(tlW, tlH, brW, tlH);
+		g.drawLine(tlW, tlH, tlW, brH);
+		g.drawLine(brW, tlH, brW, brH);
+		g.drawLine(tlW, brH, brW, brH);
+		g.drawText(String(roundFloatToInt(it->topLeftXLevel * spikeBuffer[0].nSamples)) + ", " +
+				String(roundFloatToInt(it->topLeftYLevel)),2,tlH,50,10,Justification::left, false);
+		g.drawText(String(roundFloatToInt(it->bottomRightXLevel * spikeBuffer[0].nSamples)) + ", " +
+				String(roundFloatToInt(it->bottomRightYLevel)),getWidth() - 52,brH,getWidth() - 2,10,Justification::left, false);
+	}
 
     // draw detector threshold (not editable)
     float h = getHeight()*(0.5f - detectorThresholdLevel/range);
@@ -818,21 +839,32 @@ bool WaveAxes::updateSpikeData(const SpikeObject& s)
 bool WaveAxes::checkThreshold(const SpikeObject& s)
 {
     int sampIdx = 40*type;
+	// TODO: Use line-rectangle intersection test instead
 
-    for (int i = 0; i < s.nSamples-1; i++)
-    {
-        float x = float(i) / float(s.nSamples);
-        float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
-        if (x >= displayThresholdLevel.topLeftXLevel && x <= displayThresholdLevel.bottomRightXLevel &&
-            y >= displayThresholdLevel.bottomRightYLevel && y <= displayThresholdLevel.topLeftYLevel)
-        {
-            return true;
-        }
+	for (Threshold* it = displayThresholdLevels.begin(); it != displayThresholdLevels.end(); ++it)
+	{
+		bool intersected = false;
+		// Make sure all thresholds are intersected
+		for (int i = 0; i < s.nSamples-1; i++)
+		{
+			float x = float(i) / float(s.nSamples);
+			float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
+			if (x >= it->topLeftXLevel && x <= it->bottomRightXLevel &&
+				y >= it->bottomRightYLevel && y <= it->topLeftYLevel)
+			{
+				intersected = true;
+			}
 
-        sampIdx++;
-    }
+			sampIdx++;
+		}
 
-    return false;
+		if (!intersected)
+		{
+			return false;
+		}
+	}
+
+    return true; // all thresholds were intersected
 
 }
 
@@ -861,95 +893,113 @@ void WaveAxes::mouseMove(const MouseEvent& event)
     float x = event.x;
     float y = event.y;
 
-    float tlW = getWidth() * displayThresholdLevel.topLeftXLevel;
-    float brW = getWidth() * displayThresholdLevel.bottomRightXLevel;
-    float tlH = getHeight()*(0.5f - displayThresholdLevel.topLeftYLevel/range);
-    float brH = getHeight()*(0.5f - displayThresholdLevel.bottomRightYLevel/range);
+	for (int ii = displayThresholdLevels.size() - 1; ii >= 0; ii--) // loop from back to ensure last added window gets highest Z-order
+	{
+		float tlW = getWidth() * displayThresholdLevels[ii].topLeftXLevel;
+		float brW = getWidth() * displayThresholdLevels[ii].bottomRightXLevel;
+		float tlH = getHeight()*(0.5f - displayThresholdLevels[ii].topLeftYLevel/range);
+		float brH = getHeight()*(0.5f - displayThresholdLevels[ii].bottomRightYLevel/range);
 
-	bool aboveTl = y >= (tlH - 5.0f) && y <= (tlH + 2.0f);
-	bool leftOfTl = x >= (tlW - 5.0f) && x <= (tlW + 2.0f);
-	bool belowBr = y >= (brH - 2.0f) && y <= (brH + 5.0f);
-	bool rightOfBr = x >= (brW - 2.0f) && x <= (brW + 5.0f);
-	bool insideWindow = x > (tlW + 2.0f) && x < (brW - 2.0f) && y > (tlH + 2.0f) && y < (brH - 2.0f);
+		bool aboveTl = y >= (tlH - 5.0f) && y <= (tlH + 2.0f);
+		bool leftOfTl = x >= (tlW - 5.0f) && x <= (tlW + 2.0f);
+		bool belowBr = y >= (brH - 2.0f) && y <= (brH + 5.0f);
+		bool rightOfBr = x >= (brW - 2.0f) && x <= (brW + 5.0f);
+		bool insideWindow = x > (tlW + 2.0f) && x < (brW - 2.0f) && y > (tlH + 2.0f) && y < (brH - 2.0f);
 
-    // std::cout << y << " " << h << std::endl;
+		// std::cout << y << " " << h << std::endl;
 
-    if (aboveTl && leftOfTl && !isOverThresholdSliderTopLeft)
-    {
-        thresholdColour = Colours::yellow;
+		if (aboveTl && leftOfTl && !isOverThresholdSliderTopLeft)
+		{
+			thresholdColours.getReference(ii) = Colours::yellow;
 
-        //  std::cout << "Yes." << std::endl;
+			//  std::cout << "Yes." << std::endl;
 
-        repaint();
+			repaint();
 
-        isOverThresholdSliderTopLeft = true;
-        isOverThresholdSliderBottomRight = false;
+			isOverThresholdSliderTopLeft = true;
+			isOverThresholdSliderBottomRight = false;
+			overIndex = ii;
 
-        // cursorType = MouseCursor::DraggingHandCursor;
+			break;
 
-    }
-    else if (belowBr && rightOfBr && !isOverThresholdSliderBottomRight)
-    {
-        thresholdColour = Colours::blue;
+			// cursorType = MouseCursor::DraggingHandCursor;
 
-        //  std::cout << "Yes." << std::endl;
+		}
+		else if (belowBr && rightOfBr && !isOverThresholdSliderBottomRight)
+		{
+			thresholdColours.getReference(ii) = Colours::blue;
 
-        repaint();
+			//  std::cout << "Yes." << std::endl;
 
-        isOverThresholdSliderTopLeft = false;
-        isOverThresholdSliderBottomRight = true;
+			repaint();
 
-        // cursorType = MouseCursor::DraggingHandCursor;
+			isOverThresholdSliderTopLeft = false;
+			isOverThresholdSliderBottomRight = true;
+			overIndex = ii;
 
-    }
-    else if (insideWindow && !isOverThresholdSliderMid) // switch to dragging the entire window
-    {
-        thresholdColour = Colours::green;
+			break;
 
-        //  std::cout << "Yes." << std::endl;
+			// cursorType = MouseCursor::DraggingHandCursor;
 
-        repaint();
+		}
+		else if (insideWindow && !isOverThresholdSliderMid) // switch to dragging the entire window
+		{
+			thresholdColours.getReference(ii) = Colours::green;
 
-        isOverThresholdSliderTopLeft = false;
-        isOverThresholdSliderBottomRight = false;
-		isOverThresholdSliderMid = true;
+			//  std::cout << "Yes." << std::endl;
 
-        // cursorType = MouseCursor::DraggingHandCursor;
+			repaint();
 
-    }
-    else if ((!aboveTl || !leftOfTl) && isOverThresholdSliderTopLeft)
-    {
+			isOverThresholdSliderTopLeft = false;
+			isOverThresholdSliderBottomRight = false;
+			isOverThresholdSliderMid = true;
+			overIndex = ii;
 
-        thresholdColour = Colours::red;
-        repaint();
+			break;
 
-        isOverThresholdSliderTopLeft = false;
+			// cursorType = MouseCursor::DraggingHandCursor;
 
-        //   cursorType = MouseCursor::NormalCursor;
+		}
+		else if ((!aboveTl || !leftOfTl) && isOverThresholdSliderTopLeft && overIndex == ii)
+		{
 
-    }
-    else if ((!belowBr || !rightOfBr) && isOverThresholdSliderBottomRight)
-    {
+			thresholdColours.getReference(overIndex) = Colours::red;
+			repaint();
 
-        thresholdColour = Colours::red;
-        repaint();
+			isOverThresholdSliderTopLeft = false;
 
-        isOverThresholdSliderBottomRight = false;
+			break;
 
-        //   cursorType = MouseCursor::NormalCursor;
+			//   cursorType = MouseCursor::NormalCursor;
 
-    }
-    else if (!insideWindow && isOverThresholdSliderMid)
-    {
+		}
+		else if ((!belowBr || !rightOfBr) && isOverThresholdSliderBottomRight && overIndex == ii)
+		{
 
-        thresholdColour = Colours::red;
-        repaint();
+			thresholdColours.getReference(overIndex) = Colours::red;
+			repaint();
 
-        isOverThresholdSliderMid = false;
+			isOverThresholdSliderBottomRight = false;
 
-        //	cursorType = MouseCursor::NormalCursor;
+			break;
 
-    }
+			//   cursorType = MouseCursor::NormalCursor;
+
+		}
+		else if (!insideWindow && isOverThresholdSliderMid && overIndex == ii)
+		{
+
+			thresholdColours.getReference(overIndex) = Colours::red;
+			repaint();
+
+			isOverThresholdSliderMid = false;
+
+			break;
+
+			//	cursorType = MouseCursor::NormalCursor;
+
+		}
+	}
 }
 
 void WaveAxes::mouseDown(const MouseEvent& event)
@@ -961,7 +1011,7 @@ void WaveAxes::mouseDown(const MouseEvent& event)
 	if (isOverThresholdSliderMid && !startDrag)
 	{
 		startDrag = true;
-		displayThresholdLevelAtStartOfDrag = displayThresholdLevel;
+		displayThresholdLevelAtStartOfDrag = displayThresholdLevels[overIndex];
 	}
 }
 
@@ -982,17 +1032,17 @@ void WaveAxes::mouseDrag(const MouseEvent& event)
 
     if (isOverThresholdSliderTopLeft)
     {
-        if ((thresholdSliderPositionX - displayThresholdLevel.bottomRightXLevel) * float(getWidth()) <= -10.0f)
-            displayThresholdLevel.topLeftXLevel = thresholdSliderPositionX;
-        if (getHeight()*(0.5f - displayThresholdLevel.bottomRightYLevel/range) - event.y >= 10.0f)
-            displayThresholdLevel.topLeftYLevel = (0.5f - thresholdSliderPositionY) * range;
+        if ((thresholdSliderPositionX - displayThresholdLevels[overIndex].bottomRightXLevel) * float(getWidth()) <= -10.0f)
+            displayThresholdLevels.getReference(overIndex).topLeftXLevel = thresholdSliderPositionX;
+        if (getHeight()*(0.5f - displayThresholdLevels[overIndex].bottomRightYLevel/range) - event.y >= 10.0f)
+            displayThresholdLevels.getReference(overIndex).topLeftYLevel = (0.5f - thresholdSliderPositionY) * range;
     }
     else if (isOverThresholdSliderBottomRight)
     {
-        if ((displayThresholdLevel.topLeftXLevel - thresholdSliderPositionX) * float(getWidth()) <= -10.0f)
-            displayThresholdLevel.bottomRightXLevel = thresholdSliderPositionX;
-        if (event.y - getHeight()*(0.5f - displayThresholdLevel.topLeftYLevel/range) >= 10.0f)
-            displayThresholdLevel.bottomRightYLevel = (0.5f - thresholdSliderPositionY) * range;
+        if ((displayThresholdLevels[overIndex].topLeftXLevel - thresholdSliderPositionX) * float(getWidth()) <= -10.0f)
+            displayThresholdLevels.getReference(overIndex).bottomRightXLevel = thresholdSliderPositionX;
+        if (event.y - getHeight()*(0.5f - displayThresholdLevels[overIndex].topLeftYLevel/range) >= 10.0f)
+            displayThresholdLevels.getReference(overIndex).bottomRightYLevel = (0.5f - thresholdSliderPositionY) * range;
     }
 	else if (isOverThresholdSliderMid)
 	{
@@ -1009,10 +1059,10 @@ void WaveAxes::mouseDrag(const MouseEvent& event)
 			newBottomRightXLevel >= 0.0f && newBottomRightXLevel <= 1.0f &&
 			newBottomRightYLevel >= -range/2.0f && newBottomRightYLevel <= range/2.0f)
 		{
-			displayThresholdLevel.topLeftXLevel = newTopLeftXLevel;
-			displayThresholdLevel.topLeftYLevel = newTopLeftYLevel;
-			displayThresholdLevel.bottomRightXLevel = newBottomRightXLevel;
-			displayThresholdLevel.bottomRightYLevel = newBottomRightYLevel;
+			displayThresholdLevels.getReference(overIndex).topLeftXLevel = newTopLeftXLevel;
+			displayThresholdLevels.getReference(overIndex).topLeftYLevel = newTopLeftYLevel;
+			displayThresholdLevels.getReference(overIndex).bottomRightXLevel = newBottomRightXLevel;
+			displayThresholdLevels.getReference(overIndex).bottomRightYLevel = newBottomRightYLevel;
 		}
 	}
 
@@ -1031,19 +1081,19 @@ void WaveAxes::mouseExit(const MouseEvent& event)
     if (isOverThresholdSliderTopLeft)
     {
         isOverThresholdSliderTopLeft = false;
-        thresholdColour = Colours::red;
+        thresholdColours.getReference(overIndex) = Colours::red;
         repaint();
     }
     else if (isOverThresholdSliderBottomRight)
     {
         isOverThresholdSliderBottomRight = false;
-        thresholdColour = Colours::red;
+        thresholdColours.getReference(overIndex) = Colours::red;
         repaint();
     }
     else if (isOverThresholdSliderMid)
     {
         isOverThresholdSliderMid = false;
-        thresholdColour = Colours::red;
+        thresholdColours.getReference(overIndex) = Colours::red;
         repaint();
     }
 
@@ -1057,14 +1107,21 @@ void WaveAxes::mouseUp(const MouseEvent& event)
 		startDrag = false;
 }
 
-Threshold WaveAxes::getDisplayThreshold()
+Array<Threshold> WaveAxes::getDisplayThresholds()
 {
-    return displayThresholdLevel;
+    return displayThresholdLevels;
 }
 
 void WaveAxes::setDetectorThreshold(float t)
 {
     detectorThresholdLevel = t;
+}
+
+void WaveAxes::addWindowThreshold()
+{
+	displayThresholdLevels.add(Threshold(0.5f, 50.0f, 0.9f, 10.0f));
+	thresholdColours.add(Colours::red);
+	repaint();
 }
 
 // --------------------------------------------------
