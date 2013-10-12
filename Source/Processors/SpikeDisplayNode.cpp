@@ -279,7 +279,7 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
                 {
                     e.detectorThresholds.set(i, float(newSpike.threshold[i])); // / float(newSpike.gain[i]));
 
-                    aboveThreshold = aboveThreshold & checkThresholds(i, e.displayThresholds[i], newSpike);   
+					aboveThreshold = aboveThreshold & checkThresholds(i, e.displayThresholds.getReference(i), newSpike);   
                 }
 
                 if (aboveThreshold)
