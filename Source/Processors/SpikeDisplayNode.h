@@ -78,7 +78,7 @@ public:
     void addSpikePlotForElectrode(SpikePlot* sp, int i);
     void removeSpikePlots();
 
-    bool checkThresholds(int, Array<Threshold>&, SpikeObject&);
+    bool checkThresholds(int, const Array<Threshold>&, SpikeObject&);
 
 private:
 

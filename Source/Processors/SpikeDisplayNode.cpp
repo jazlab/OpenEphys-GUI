@@ -308,7 +308,7 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
 
 }
 
-bool SpikeDisplayNode::checkThresholds(int chan, Array<Threshold>& thresh, SpikeObject& s)
+bool SpikeDisplayNode::checkThresholds(int chan, const Array<Threshold>& thresh, SpikeObject& s)
 {
     int sampIdx = s.nSamples*chan;
 
