@@ -310,16 +310,16 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
 
 bool SpikeDisplayNode::checkThresholds(int chan, const Array<Threshold>& thresh, SpikeObject& s)
 {
-    int sampIdx = s.nSamples*chan;
-
+	// TODO: Use line-rectangle intersection test instead
 	for (Threshold* it = thresh.begin(); it != thresh.end(); ++it)
 	{
+		int sampIdx = s.nSamples*chan;
 		bool intersected = false;
 		// Make sure all thresholds are intersected
 		for (int i = 0; i < s.nSamples-1; i++)
 		{
 			float x = float(i) / float(s.nSamples);
-			float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
+			float y = 1.0f-float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
 			if (x >= it->topLeftXLevel && x <= it->bottomRightXLevel &&
 				y >= it->bottomRightYLevel && y <= it->topLeftYLevel)
 			{

@@ -838,17 +838,17 @@ bool WaveAxes::updateSpikeData(const SpikeObject& s)
 
 bool WaveAxes::checkThreshold(const SpikeObject& s)
 {
-    int sampIdx = 40*type;
 	// TODO: Use line-rectangle intersection test instead
 
 	for (Threshold* it = displayThresholdLevels.begin(); it != displayThresholdLevels.end(); ++it)
 	{
+		int sampIdx = 40*type;
 		bool intersected = false;
 		// Make sure all thresholds are intersected
 		for (int i = 0; i < s.nSamples-1; i++)
 		{
 			float x = float(i) / float(s.nSamples);
-			float y = float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
+			float y = 1.0f-float(s.data[sampIdx]-32768)/float(*s.gain)*1000.0f;
 			if (x >= it->topLeftXLevel && x <= it->bottomRightXLevel &&
 				y >= it->bottomRightYLevel && y <= it->topLeftYLevel)
 			{
