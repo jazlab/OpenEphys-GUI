@@ -108,6 +108,7 @@ private:
     ScopedPointer<Viewport> viewport;
 
     ScopedPointer<UtilityButton> clearButton;
+	ScopedPointer<WaveAxes> wAxMirror;
 
     bool newSpike;
     SpikeObject spike;

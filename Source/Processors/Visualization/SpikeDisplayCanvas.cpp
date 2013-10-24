@@ -41,6 +41,9 @@ SpikeDisplayCanvas::SpikeDisplayCanvas(SpikeDisplayNode* n) :
     clearButton->addListener(this);
     addAndMakeVisible(clearButton);
 
+	wAxMirror = new WaveAxes(WAVE1);
+    addAndMakeVisible(wAxMirror);
+
     addAndMakeVisible(viewport);
 
     setWantsKeyboardFocus(true);
