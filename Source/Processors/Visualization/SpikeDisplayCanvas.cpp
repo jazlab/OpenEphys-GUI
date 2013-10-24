@@ -660,6 +660,9 @@ WaveAxes::WaveAxes(int channel) : GenericAxes(channel), drawGrid(true),
 
     addMouseListener(this, true);
 
+	setWantsKeyboardFocus(true);
+	addKeyListener(this);
+
     thresholdColours.add(Colours::red);
 
     font = Font("Small Text",10,Font::plain);
@@ -887,6 +890,7 @@ void WaveAxes::clear()
 
 void WaveAxes::mouseMove(const MouseEvent& event)
 {
+	grabKeyboardFocus();
 
     // Point<int> pos = event.getPosition();
 
@@ -1105,6 +1109,21 @@ void WaveAxes::mouseUp(const MouseEvent& event)
 {
 	if (startDrag)
 		startDrag = false;
+}
+
+bool WaveAxes::keyPressed(const KeyPress& key, Component* originatingComponent)
+{
+	if (key.getKeyCode() == KeyPress::deleteKey)
+	{
+		if (isOverThresholdSliderTopLeft || isOverThresholdSliderBottomRight || isOverThresholdSliderMid)
+		{
+			displayThresholdLevels.remove(overIndex);
+			thresholdColours.remove(overIndex);
+			isOverThresholdSliderTopLeft = isOverThresholdSliderBottomRight = isOverThresholdSliderMid = false;
+			repaint();
+		}
+	}
+	return true;
 }
 
 Array<Threshold> WaveAxes::getDisplayThresholds()

@@ -305,7 +305,7 @@ struct Threshold
 
 */
 
-class WaveAxes : public GenericAxes
+class WaveAxes : public GenericAxes, KeyListener
 {
 public:
     WaveAxes(int channel);
@@ -325,6 +325,8 @@ public:
     void mouseDown(const MouseEvent& event);
     void mouseDrag(const MouseEvent& event);
 	void mouseUp(const MouseEvent& event);
+
+	bool keyPressed(const KeyPress& key, Component* originatingComponent);
 
     void setRange(float);
     float getRange()
