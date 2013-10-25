@@ -100,12 +100,14 @@ void SpikeDisplayCanvas::refreshState()
 
 void SpikeDisplayCanvas::resized()
 {
-    viewport->setBounds(0,0,getWidth(),getHeight()-90);
+	const int MIRROR_WIDTH = static_cast<int>(0.2 * getWidth());
+    viewport->setBounds(MIRROR_WIDTH,0,getWidth()-MIRROR_WIDTH,getHeight()-90);
 
-    spikeDisplay->setBounds(0,0,getWidth()-scrollBarThickness, spikeDisplay->getTotalHeight());
+    spikeDisplay->setBounds(MIRROR_WIDTH,0,getWidth()-scrollBarThickness-MIRROR_WIDTH, spikeDisplay->getTotalHeight());
 
     clearButton->setBounds(10, getHeight()-40, 100,20);
 
+	wAxMirror->setBounds(0, 0, MIRROR_WIDTH, getHeight() - 40);
 }
 
 void SpikeDisplayCanvas::paint(Graphics& g)
