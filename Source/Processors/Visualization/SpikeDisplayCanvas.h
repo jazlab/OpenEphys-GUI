@@ -30,6 +30,7 @@
 #include "SpikeObject.h"
 
 #include "Visualizer.h"
+#include <set>
 #include <vector>
 
 #define WAVE1 0
@@ -57,6 +58,7 @@ class GenericAxes;
 class ProjectionAxes;
 struct Threshold;
 class WaveAxes;
+class WaveAxesRef;
 class SpikePlot;
 class RecordNode;
 
@@ -89,6 +91,8 @@ public:
     void setParameter(int, float) {}
     void setParameter(int, int, int, float) {}
 
+	void setMirror(WaveAxes *wAx);
+
     void update();
 
     void resized();
@@ -108,7 +112,7 @@ private:
     ScopedPointer<Viewport> viewport;
 
     ScopedPointer<UtilityButton> clearButton;
-	ScopedPointer<WaveAxes> wAxMirror;
+	ScopedPointer<WaveAxesRef> wAxMirror;
 
     bool newSpike;
     SpikeObject spike;
@@ -309,23 +313,27 @@ struct Threshold
 class WaveAxes : public GenericAxes, KeyListener
 {
 public:
-    WaveAxes(int channel);
+    WaveAxes(SpikeDisplayCanvas* sdc, int channel);
     ~WaveAxes() {}
 
     bool updateSpikeData(const SpikeObject& s);
     bool checkThreshold(const SpikeObject& spike);
 
+	void paintImpl(Graphics& g, int width, int height);
     void paint(Graphics& g);
 
-    void plotSpike(const SpikeObject& s, Graphics& g);
+    void plotSpike(const SpikeObject& s, Graphics& g, int width, int height);
 
     void clear();
 
+	void mouseMoveImpl(const MouseEvent& event, int width, int height);
     void mouseMove(const MouseEvent& event);
     void mouseExit(const MouseEvent& event);
     void mouseDown(const MouseEvent& event);
+    void mouseDragImpl(const MouseEvent& event, int width, int height);
     void mouseDrag(const MouseEvent& event);
 	void mouseUp(const MouseEvent& event);
+	void mouseDoubleClick(const MouseEvent& event);
 
 	bool keyPressed(const KeyPress& key, Component* originatingComponent);
 
@@ -342,10 +350,15 @@ public:
 
     //MouseCursor getMouseCursor();
 
+	void addObserver(WaveAxesRef* mirror);
+	void removeObserver(WaveAxesRef* mirror);
+
 private:
     Colour waveColour;
     Array<Colour> thresholdColours;
     Colour gridColour;
+
+	SpikeDisplayCanvas* canvas;
 
     bool drawGrid;
 
@@ -354,9 +367,9 @@ private:
 	int draggedIndex;
     float detectorThresholdLevel;
 
-    void drawWaveformGrid(Graphics& g);
+    void drawWaveformGrid(Graphics& g, int width, int height);
 
-    void drawThresholdSlider(Graphics& g);
+    void drawThresholdSlider(Graphics& g, int width, int height);
 
     int spikesReceivedSinceLastRedraw;
 
@@ -377,6 +390,29 @@ private:
 
     MouseCursor::StandardCursorType cursorType;
 
+	std::set<WaveAxesRef*> observers;
+};
+
+class WaveAxesRef : public Component, KeyListener
+{
+public:
+    WaveAxesRef(WaveAxes *wAx);
+    ~WaveAxesRef();
+
+    void paint(Graphics& g);
+
+    void mouseMove(const MouseEvent& event);
+    void mouseExit(const MouseEvent& event);
+    void mouseDown(const MouseEvent& event);
+    void mouseDrag(const MouseEvent& event);
+	void mouseUp(const MouseEvent& event);
+
+	bool keyPressed(const KeyPress& key, Component* originatingComponent);
+
+	void setMirrored(WaveAxes *wAx);
+
+private:
+	WaveAxes *mirroredWaveAxes;
 };
 
 

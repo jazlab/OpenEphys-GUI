@@ -41,7 +41,7 @@ SpikeDisplayCanvas::SpikeDisplayCanvas(SpikeDisplayNode* n) :
     clearButton->addListener(this);
     addAndMakeVisible(clearButton);
 
-	wAxMirror = new WaveAxes(WAVE1);
+	wAxMirror = new WaveAxesRef(nullptr);
     addAndMakeVisible(wAxMirror);
 
     addAndMakeVisible(viewport);
@@ -69,6 +69,11 @@ void SpikeDisplayCanvas::endAnimation()
     std::cout << "SpikeDisplayCanvas ending animation." << std::endl;
 
     stopCallbacks();
+}
+
+void SpikeDisplayCanvas::setMirror(WaveAxes *wAx)
+{
+	wAxMirror->setMirrored(wAx);
 }
 
 void SpikeDisplayCanvas::update()
@@ -465,7 +470,7 @@ void SpikePlot::initAxes()
 
     for (int i = 0; i < nWaveAx; i++)
     {
-        WaveAxes* wAx = new WaveAxes(WAVE1 + i);
+        WaveAxes* wAx = new WaveAxes(canvas, WAVE1 + i);
         wAxes.add(wAx);
         addAndMakeVisible(wAx);
         ranges.add(250.0f); // default range is 250 microvolts
@@ -654,7 +659,7 @@ void SpikePlot::mouseDrag(const MouseEvent& event)
 // --------------------------------------------------
 
 
-WaveAxes::WaveAxes(int channel) : GenericAxes(channel), drawGrid(true),
+WaveAxes::WaveAxes(SpikeDisplayCanvas* sdc, int channel) : GenericAxes(channel), canvas(sdc), drawGrid(true),
     bufferSize(5), spikeIndex(0),
     detectorThresholdLevel(0.0f), range(250.0f),
     isOverThresholdSliderTopLeft(false), isOverThresholdSliderBottomRight(false), isOverThresholdSliderMid(false), 
@@ -691,20 +696,20 @@ void WaveAxes::setRange(float r)
     repaint();
 }
 
-void WaveAxes::paint(Graphics& g)
+void WaveAxes::paintImpl(Graphics& g, int width, int height)
 {
     g.setColour(Colours::black);
-    g.fillRect(0,0,getWidth(), getHeight());
+    g.fillRect(0,0,width, height);
 
     int chan = 0;
 
     // draw the grid lines for the waveforms
 
     if (drawGrid)
-        drawWaveformGrid(g);
+        drawWaveformGrid(g, width, height);
 
     // draw the threshold line and labels
-    drawThresholdSlider(g);
+    drawThresholdSlider(g, width, height);
     //drawBoundingBox(g);
 
     // if no spikes have been received then don't plot anything
@@ -720,26 +725,36 @@ void WaveAxes::paint(Graphics& g)
          if (spikeNum != spikeIndex)
          {
              g.setColour(Colours::grey);
-             plotSpike(spikeBuffer[spikeNum], g);
+             plotSpike(spikeBuffer[spikeNum], g, width, height);
          }
 
      }
 
     g.setColour(Colours::white);
-    plotSpike(spikeBuffer[spikeIndex], g);
+    plotSpike(spikeBuffer[spikeIndex], g, width, height);
 
 
     spikesReceivedSinceLastRedraw = 0;
 
 }
 
-void WaveAxes::plotSpike(const SpikeObject& s, Graphics& g)
+void WaveAxes::paint(Graphics& g)
+{
+	paintImpl(g, getWidth(), getHeight());
+	for (std::set<WaveAxesRef*>::const_iterator it = observers.begin();
+		it != observers.end(); ++it)
+	{
+		(*it)->repaint();
+	}
+}
+
+void WaveAxes::plotSpike(const SpikeObject& s, Graphics& g, int width, int height)
 {
 
-    float h = getHeight();
+    float h = height;
 
     //compute the spatial width for each waveform sample
-    float dx = getWidth()/float(spikeBuffer[0].nSamples);
+    float dx = width/float(spikeBuffer[0].nSamples);
 
     // type corresponds to channel so we need to calculate the starting
     // sample based upon which channel is getting plotted
@@ -772,16 +787,16 @@ void WaveAxes::plotSpike(const SpikeObject& s, Graphics& g)
 
 }
 
-void WaveAxes::drawThresholdSlider(Graphics& g)
+void WaveAxes::drawThresholdSlider(Graphics& g, int width, int height)
 {
 
     // draw display threshold (editable)
 	for (Threshold* it = displayThresholdLevels.begin(); it != displayThresholdLevels.end(); ++it)
 	{
-		float tlW = getWidth() * it->topLeftXLevel;
-		float brW = getWidth() * it->bottomRightXLevel;
-		float tlH = getHeight()*(0.5f - it->topLeftYLevel/range);
-		float brH = getHeight()*(0.5f - it->bottomRightYLevel/range);
+		float tlW = width * it->topLeftXLevel;
+		float brW = width * it->bottomRightXLevel;
+		float tlH = height*(0.5f - it->topLeftYLevel/range);
+		float brH = height*(0.5f - it->bottomRightYLevel/range);
 
 		g.setColour(thresholdColours[it - displayThresholdLevels.begin()]);
 		g.drawLine(tlW, tlH, brW, tlH);
@@ -791,21 +806,21 @@ void WaveAxes::drawThresholdSlider(Graphics& g)
 		g.drawText(String(roundFloatToInt(it->topLeftXLevel * spikeBuffer[0].nSamples)) + ", " +
 				String(roundFloatToInt(it->topLeftYLevel)),2,tlH,50,10,Justification::left, false);
 		g.drawText(String(roundFloatToInt(it->bottomRightXLevel * spikeBuffer[0].nSamples)) + ", " +
-				String(roundFloatToInt(it->bottomRightYLevel)),getWidth() - 52,brH,getWidth() - 2,10,Justification::left, false);
+				String(roundFloatToInt(it->bottomRightYLevel)),width - 52,brH,width - 2,10,Justification::left, false);
 	}
 
     // draw detector threshold (not editable)
-    float h = getHeight()*(0.5f - detectorThresholdLevel/range);
+    float h = height*(0.5f - detectorThresholdLevel/range);
     
     g.setColour(Colours::orange);
-    g.drawLine(0, h, getWidth(), h);
+    g.drawLine(0, h, width, h);
 }
 
-void WaveAxes::drawWaveformGrid(Graphics& g)
+void WaveAxes::drawWaveformGrid(Graphics& g, int width, int height)
 {
 
-    float h = getHeight();
-    float w = getWidth();
+    float h = height;
+    float w = width;
 
     g.setColour(Colours::darkgrey);
 
@@ -893,10 +908,8 @@ void WaveAxes::clear()
     repaint();
 }
 
-void WaveAxes::mouseMove(const MouseEvent& event)
+void WaveAxes::mouseMoveImpl(const MouseEvent& event, int width, int height)
 {
-	grabKeyboardFocus();
-
     // Point<int> pos = event.getPosition();
 
     float x = event.x;
@@ -904,10 +917,10 @@ void WaveAxes::mouseMove(const MouseEvent& event)
 
 	for (int ii = displayThresholdLevels.size() - 1; ii >= 0; ii--) // loop from back to ensure last added window gets highest Z-order
 	{
-		float tlW = getWidth() * displayThresholdLevels[ii].topLeftXLevel;
-		float brW = getWidth() * displayThresholdLevels[ii].bottomRightXLevel;
-		float tlH = getHeight()*(0.5f - displayThresholdLevels[ii].topLeftYLevel/range);
-		float brH = getHeight()*(0.5f - displayThresholdLevels[ii].bottomRightYLevel/range);
+		float tlW = width * displayThresholdLevels[ii].topLeftXLevel;
+		float brW = width * displayThresholdLevels[ii].bottomRightXLevel;
+		float tlH = height*(0.5f - displayThresholdLevels[ii].topLeftYLevel/range);
+		float brH = height*(0.5f - displayThresholdLevels[ii].bottomRightYLevel/range);
 
 		bool aboveTl = y >= (tlH - 5.0f) && y <= (tlH + 2.0f);
 		bool leftOfTl = x >= (tlW - 5.0f) && x <= (tlW + 2.0f);
@@ -1011,6 +1024,12 @@ void WaveAxes::mouseMove(const MouseEvent& event)
 	}
 }
 
+void WaveAxes::mouseMove(const MouseEvent& event)
+{
+	grabKeyboardFocus();
+	mouseMoveImpl(event, getWidth(), getHeight());
+}
+
 void WaveAxes::mouseDown(const MouseEvent& event)
 {
     // if (isOverThresholdSlider)
@@ -1024,13 +1043,13 @@ void WaveAxes::mouseDown(const MouseEvent& event)
 	}
 }
 
-void WaveAxes::mouseDrag(const MouseEvent& event)
+void WaveAxes::mouseDragImpl(const MouseEvent& event, int width, int height)
 {
-    float thresholdSliderPositionX = float(event.x) / float(getWidth());
-    float thresholdSliderPositionY = float(event.y) / float(getHeight());
+    float thresholdSliderPositionX = float(event.x) / float(width);
+    float thresholdSliderPositionY = float(event.y) / float(height);
 
     if (thresholdSliderPositionX >= 1.0f)
-        thresholdSliderPositionX = float(getWidth() - 1) / float(getWidth());
+        thresholdSliderPositionX = float(width - 1) / float(width);
     else if (thresholdSliderPositionX < 0.0f)
         thresholdSliderPositionX = 0.0f;
 
@@ -1041,22 +1060,22 @@ void WaveAxes::mouseDrag(const MouseEvent& event)
 
     if (isOverThresholdSliderTopLeft)
     {
-        if ((thresholdSliderPositionX - displayThresholdLevels[overIndex].bottomRightXLevel) * float(getWidth()) <= -10.0f)
+        if ((thresholdSliderPositionX - displayThresholdLevels[overIndex].bottomRightXLevel) * float(width) <= -10.0f)
             displayThresholdLevels.getReference(overIndex).topLeftXLevel = thresholdSliderPositionX;
-        if (getHeight()*(0.5f - displayThresholdLevels[overIndex].bottomRightYLevel/range) - event.y >= 10.0f)
+        if (height*(0.5f - displayThresholdLevels[overIndex].bottomRightYLevel/range) - event.y >= 10.0f)
             displayThresholdLevels.getReference(overIndex).topLeftYLevel = (0.5f - thresholdSliderPositionY) * range;
     }
     else if (isOverThresholdSliderBottomRight)
     {
-        if ((displayThresholdLevels[overIndex].topLeftXLevel - thresholdSliderPositionX) * float(getWidth()) <= -10.0f)
+        if ((displayThresholdLevels[overIndex].topLeftXLevel - thresholdSliderPositionX) * float(width) <= -10.0f)
             displayThresholdLevels.getReference(overIndex).bottomRightXLevel = thresholdSliderPositionX;
-        if (event.y - getHeight()*(0.5f - displayThresholdLevels[overIndex].topLeftYLevel/range) >= 10.0f)
+        if (event.y - height*(0.5f - displayThresholdLevels[overIndex].topLeftYLevel/range) >= 10.0f)
             displayThresholdLevels.getReference(overIndex).bottomRightYLevel = (0.5f - thresholdSliderPositionY) * range;
     }
 	else if (isOverThresholdSliderMid)
 	{
-		float xOffset = event.getOffsetFromDragStart().getX() / float(getWidth());
-		float yOffset = -(event.getOffsetFromDragStart().getY() / float(getHeight()) * range);
+		float xOffset = event.getOffsetFromDragStart().getX() / float(width);
+		float yOffset = -(event.getOffsetFromDragStart().getY() / float(height) * range);
 
 		float newTopLeftXLevel = displayThresholdLevelAtStartOfDrag.topLeftXLevel + xOffset;
 		float newTopLeftYLevel = displayThresholdLevelAtStartOfDrag.topLeftYLevel + yOffset;
@@ -1076,6 +1095,11 @@ void WaveAxes::mouseDrag(const MouseEvent& event)
 	}
 
     repaint();
+}
+
+void WaveAxes::mouseDrag(const MouseEvent& event)
+{
+	mouseDragImpl(event, getWidth(), getHeight());
 }
 
 // MouseCursor WaveAxes::getMouseCursor()
@@ -1116,6 +1140,12 @@ void WaveAxes::mouseUp(const MouseEvent& event)
 		startDrag = false;
 }
 
+void WaveAxes::mouseDoubleClick(const MouseEvent& event)
+{
+	canvas->setMirror(this);
+	repaint();
+}
+
 bool WaveAxes::keyPressed(const KeyPress& key, Component* originatingComponent)
 {
 	if (key.getKeyCode() == KeyPress::deleteKey)
@@ -1146,6 +1176,110 @@ void WaveAxes::addWindowThreshold()
 	displayThresholdLevels.add(Threshold(0.5f, 50.0f, 0.9f, 10.0f));
 	thresholdColours.add(Colours::red);
 	repaint();
+}
+
+void WaveAxes::addObserver(WaveAxesRef* mirror)
+{
+	observers.insert(mirror);
+}
+
+void WaveAxes::removeObserver(WaveAxesRef* mirror)
+{
+	observers.erase(mirror);
+}
+
+// --------------------------------------------------
+
+WaveAxesRef::WaveAxesRef(WaveAxes *wAx) : mirroredWaveAxes(wAx)
+{
+    addMouseListener(this, true);
+
+	setWantsKeyboardFocus(true);
+	addKeyListener(this);
+}
+
+WaveAxesRef::~WaveAxesRef()
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->removeObserver(this);
+	}
+}
+
+void WaveAxesRef::paint(Graphics& g)
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->paintImpl(g, getWidth(), getHeight());
+	}
+	else
+	{
+		g.fillAll(Colours::black); // we are not mirroring anything yet so just paint black
+	}
+}
+
+void WaveAxesRef::mouseMove(const MouseEvent& event)
+{
+	grabKeyboardFocus();
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->mouseMoveImpl(event, getWidth(), getHeight());
+	}
+}
+
+void WaveAxesRef::mouseExit(const MouseEvent& event)
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->mouseExit(event);
+	}
+}
+
+void WaveAxesRef::mouseDown(const MouseEvent& event)
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->mouseDown(event);
+	}
+}
+
+void WaveAxesRef::mouseDrag(const MouseEvent& event)
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->mouseDragImpl(event, getWidth(), getHeight());
+	}
+}
+
+void WaveAxesRef::mouseUp(const MouseEvent& event)
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->mouseUp(event);
+	}
+}
+
+bool WaveAxesRef::keyPressed(const KeyPress& key, Component* originatingComponent)
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		return mirroredWaveAxes->keyPressed(key, originatingComponent);
+	}
+
+	return false;
+}
+
+void WaveAxesRef::setMirrored(WaveAxes *wAx)
+{
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->removeObserver(this);
+	}
+	mirroredWaveAxes = wAx;
+	if (mirroredWaveAxes != nullptr)
+	{
+		mirroredWaveAxes->addObserver(this);
+	}
 }
 
 // --------------------------------------------------
