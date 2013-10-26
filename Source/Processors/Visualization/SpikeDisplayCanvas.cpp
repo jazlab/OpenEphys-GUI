@@ -1148,7 +1148,7 @@ void WaveAxes::mouseDoubleClick(const MouseEvent& event)
 
 bool WaveAxes::keyPressed(const KeyPress& key, Component* originatingComponent)
 {
-	if (key.getKeyCode() == KeyPress::deleteKey)
+	if (key.getKeyCode() == KeyPress::backspaceKey)
 	{
 		if (isOverThresholdSliderTopLeft || isOverThresholdSliderBottomRight || isOverThresholdSliderMid)
 		{
