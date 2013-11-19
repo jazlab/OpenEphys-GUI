@@ -57,6 +57,7 @@ void SpikeDisplayNode::updateSettings()
 {
     //std::cout << "Setting num inputs on SpikeDisplayNode to " << getNumInputs() << std::endl;
 
+	Array<Electrode> temp_electrodes(electrodes);
     electrodes.clear();
 
     for (int i = 0; i < eventChannels.size(); i++)
@@ -72,9 +73,8 @@ void SpikeDisplayNode::updateSettings()
 
             for (int j = 0; j < elec.numChannels; j++)
             {
-                elec.displayThresholds.add(Array<Threshold>());
-				elec.displayThresholds.getReference(elec.displayThresholds.size() - 1).add(Threshold());
-                elec.detectorThresholds.add(0);
+				elec.displayThresholds = temp_electrodes[j].displayThresholds;
+				elec.detectorThresholds = temp_electrodes[j].detectorThresholds;
             }
             
             electrodes.add(elec);
