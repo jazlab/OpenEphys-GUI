@@ -207,6 +207,8 @@ public:
     void buttonClicked(Button* button);
 
     Array<Threshold> getDisplayThresholdsForChannel(int);
+	void setDisplayThresholdsForChannel(Array<Threshold>, int);
+	float getDetectorThresholdForChannel(int);
     void setDetectorThresholdForChannel(int, float);
 
     void mouseDown(const MouseEvent& event); // to allow component dragging
@@ -295,7 +297,12 @@ struct Threshold
 {
     float topLeftXLevel, topLeftYLevel;
     float bottomRightXLevel, bottomRightYLevel;
-    Threshold() {}
+    Threshold() :
+		topLeftXLevel(0.5f),
+		topLeftYLevel(50.0f),
+		bottomRightXLevel(0.9f),
+		bottomRightYLevel(10.0f)
+	{}
     Threshold(float tlX, float tlY, float brX, float brY) :
 		topLeftXLevel(tlX),
 		topLeftYLevel(tlY),
@@ -344,6 +351,8 @@ public:
     }
 
     Array<Threshold> getDisplayThresholds();
+	void setDisplayThresholds(Array<Threshold>);
+	float getDetectorThreshold();
     void setDetectorThreshold(float);
 
 	void addWindowThreshold();

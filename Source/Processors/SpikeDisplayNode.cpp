@@ -60,6 +60,8 @@ void SpikeDisplayNode::updateSettings()
 	Array<Electrode> temp_electrodes(electrodes);
     electrodes.clear();
 
+	bool isDeleteEvent = eventChannels.size() < temp_electrodes.size();
+
     for (int i = 0; i < eventChannels.size(); i++)
     {
         if ((eventChannels[i]->eventType < 999) && (eventChannels[i]->eventType > SPIKE_BASE_CODE))
@@ -71,11 +73,32 @@ void SpikeDisplayNode::updateSettings()
             elec.currentSpikeIndex = 0;
             elec.mostRecentSpikes.ensureStorageAllocated(displayBufferSize);
 
-            for (int j = 0; j < elec.numChannels; j++)
+			for (int j = 0; j < elec.numChannels; j++)
             {
-				elec.displayThresholds = temp_electrodes[j].displayThresholds;
-				elec.detectorThresholds = temp_electrodes[j].detectorThresholds;
+                elec.displayThresholds.add(Array<Threshold>());
+				elec.displayThresholds.getReference(elec.displayThresholds.size() - 1).add(Threshold());
+                elec.detectorThresholds.add(0);
             }
+
+			if (i < temp_electrodes.size() && (!isDeleteEvent || elec.name.compare(temp_electrodes[i].name))) // if it's a delete event, make sure names match up
+			{
+				if (temp_electrodes[i].spikePlot != nullptr)
+				{
+					elec.displayThresholds = Array<Array<Threshold> >();
+					for (int j = 0; j < temp_electrodes[i].numChannels; ++j)
+					{
+						elec.displayThresholds.add(temp_electrodes[i].spikePlot->getDisplayThresholdsForChannel(j));
+					}
+				}
+				if (temp_electrodes[i].spikePlot != nullptr)
+				{
+					elec.detectorThresholds = Array<float>();
+					for (int j = 0; j < temp_electrodes[i].numChannels; ++j)
+					{
+						elec.detectorThresholds.add(temp_electrodes[i].spikePlot->getDetectorThresholdForChannel(j));
+					}
+				}
+			}
             
             electrodes.add(elec);
         }
@@ -133,7 +156,10 @@ void SpikeDisplayNode::addSpikePlotForElectrode(SpikePlot* sp, int i)
 {
     Electrode& e = electrodes.getReference(i);
     e.spikePlot = sp;
-
+	for (int j = 0; j < e.numChannels; ++j)
+	{
+		e.spikePlot->setDisplayThresholdsForChannel(e.displayThresholds[j], j);
+	}
 }
 
 void SpikeDisplayNode::removeSpikePlots()
@@ -278,8 +304,8 @@ void SpikeDisplayNode::handleEvent(int eventType, MidiMessage& event, int sample
                 for (int i = 0; i < e.numChannels; i++)
                 {
                     e.detectorThresholds.set(i, float(newSpike.threshold[i])); // / float(newSpike.gain[i]));
-
-					aboveThreshold = aboveThreshold & checkThresholds(i, e.displayThresholds.getReference(i), newSpike);   
+					
+					aboveThreshold = aboveThreshold && checkThresholds(i, e.displayThresholds.getReference(i), newSpike);   
                 }
 
                 if (aboveThreshold)

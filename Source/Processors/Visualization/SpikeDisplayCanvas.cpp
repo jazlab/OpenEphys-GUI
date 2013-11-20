@@ -640,6 +640,16 @@ Array<Threshold> SpikePlot::getDisplayThresholdsForChannel(int i)
     return wAxes[i]->getDisplayThresholds();
 }
 
+void SpikePlot::setDisplayThresholdsForChannel(Array<Threshold> displayThresholds, int i)
+{
+	wAxes[i]->setDisplayThresholds(displayThresholds);
+}
+
+float SpikePlot::getDetectorThresholdForChannel(int i)
+{
+	return wAxes[i]->getDetectorThreshold();
+}
+
 void SpikePlot::setDetectorThresholdForChannel(int i, float t)
 {
    // std::cout << "Setting threshold to " << t << std::endl;
@@ -666,8 +676,6 @@ WaveAxes::WaveAxes(SpikeDisplayCanvas* sdc, int channel) : GenericAxes(channel),
 	startDrag(false),
     spikesReceivedSinceLastRedraw(0)
 {
-	displayThresholdLevels.add(Threshold(0.5f, 50.0f, 0.9f, 10.0f));
-
     addMouseListener(this, true);
 
 	setWantsKeyboardFocus(true);
@@ -1164,6 +1172,21 @@ bool WaveAxes::keyPressed(const KeyPress& key, Component* originatingComponent)
 Array<Threshold> WaveAxes::getDisplayThresholds()
 {
     return displayThresholdLevels;
+}
+
+void WaveAxes::setDisplayThresholds(Array<Threshold> displayThresholds)
+{
+	displayThresholdLevels = displayThresholds;
+	thresholdColours.clear();
+	for (int ii = 0; ii < displayThresholds.size(); ++ii)
+	{
+		thresholdColours.add(Colours::red);
+	}
+}
+
+float WaveAxes::getDetectorThreshold()
+{
+	return detectorThresholdLevel;
 }
 
 void WaveAxes::setDetectorThreshold(float t)
