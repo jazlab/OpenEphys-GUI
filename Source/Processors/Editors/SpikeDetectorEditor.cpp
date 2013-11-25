@@ -383,13 +383,16 @@ bool SpikeDetectorEditor::addElectrode(int nChans)
 {
     SpikeDetector* processor = (SpikeDetector*) getProcessor();
 
+	disable();
     if (processor->addElectrode(nChans))
     {
         refreshElectrodeList();
+		enable();
         return true;
     }
     else
     {
+		enable();
         return false;
     }
 
